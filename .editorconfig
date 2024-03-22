@@ -1,0 +1,11 @@
+root = true
+
+# Unix-style newlines with a newline ending every file
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+
+# 1 tab indentation
+[*.php]
+indent_style = tab

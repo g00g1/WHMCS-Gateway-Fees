@@ -1,9 +1,9 @@
 # Gateway Fees Plugin for WHMCS
 
-Version: **2.5.1**
-Oct23 2022
+Version: **2.5.2**
+22/Mar/2024
 
-This is an open-source forked version of the (Original) Gateway Fees plugin for WHMCS, https://github.com/ajarmoszuk/WHMCS-Gateway-Fees (now closed)
+This is an open-source forked version of the (Cloned) Gateway Fees plugin for WHMCS, https://github.com/solaceten/WHMCS-Gateway-Fees (now abandoned).
 
 It will allow you to set a fee for using a payment gateway module in WHMCS. In other words you can on-charge a gateway "convenience fee", or whatever you want to call it, to your end customer.  For example, if your credit card company charges you 3% per transaction, you may wish to pass on x% of that fee back to the customer.  With this module you can do that.  
 
@@ -25,13 +25,3 @@ To test it, go to any invoice and change the payment method to one that you have
 This should work for all newly generated invoices.
 
 NO SUPPORT - USE AS IS.  However, if you do come up with an issue, open a thread in the issues section, or in WHMCS forums, you might get some help there.
-
-Thanks to Dev @leemahoney3 and tester @solaceten for modernising this and keeping it alive.  
-
-If you found it useful, please consider a donation:
-
-https://www.buymeacoffee.com/leemahoney3
-
-https://www.buymeacoffee.com/solaceten
-
-
