@@ -34,6 +34,13 @@ function gateway_fees_config() {
 			"Description" => "% Fee",
 		];
 
+		$configArray["fields"]["min_fee_{$gateway->gateway}"] = [
+			"FriendlyName" => $gateway->gateway,
+			"Type" => "text",
+			"Default" => "0.00",
+			"Description" => "Minimum Fee",
+		];
+
 		$configArray["fields"]["max_fee_{$gateway->gateway}"] = [
 			"FriendlyName" => $gateway->gateway,
 			"Type" => "text",

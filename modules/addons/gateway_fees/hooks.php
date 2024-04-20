@@ -39,6 +39,10 @@ function gatewayFees($vars) {
 			$fee2 = (float) $fee->value;
 		}
 
+		if ($fee->setting == "min_fee_{$paymentMethod}") {
+			$minFee = (float) $fee->value;
+		}
+
 		if ($fee->setting == "max_fee_{$paymentMethod}") {
 			$maxFee = (float) $fee->value;
 		}
@@ -55,6 +59,9 @@ function gatewayFees($vars) {
 		if ($maxFee != 0 && $maxFee < ($fee1 + $total * $fee2 / 100)) {
 			$d = Currency::defaultCurrency()->first()->prefix . number_format($maxFee, 2);
 			$amountDue = $maxFee;
+		} elseif ($minFee != 0 && $minFee > ($fee1 + $total * $fee2 / 100)) {
+			$d = Currency::defaultCurrency()->first()->prefix . number_format($minFee, 2);
+			$amountDue = $minFee;
 		} else {
 			$amountDue = $fee1 + $total * $fee2 / 100;
 
