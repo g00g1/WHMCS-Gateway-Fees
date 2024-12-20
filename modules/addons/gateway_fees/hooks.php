@@ -6,6 +6,7 @@ use WHMCS\Session;
 use WHMCS\User\Client;
 use WHMCS\Billing\Invoice;
 use WHMCS\Billing\Currency;
+use WHMCS\Database\Capsule;
 use WHMCS\Module\GatewaySetting;
 use WHMCS\Service\Service as Service;
 use WHMCS\Billing\Invoice\Item as InvoiceItem;
@@ -24,75 +25,71 @@ function gatewayFees($vars) {
 
 	localAPI('UpdateInvoice', ['invoiceid' => $invoiceId]);
 
-	$fees = [];
+	$invoiceData = localAPI('GetInvoice', ['invoiceid' => $invoiceId]);
+
 	$taxable = false;
-	$fee1 = $fee2 = $maxFee = 0;
+	$fixedFee = $percentageFee = $minFee = $maxFee = 0;
 
 	$gatewayFees = AddonSetting::where('module', "gateway_fees")->get();
 
 	foreach ($gatewayFees as $fee) {
-		if ($fee->setting == "fixed_fee_{$paymentMethod}") {
-			$fee1 = (float) $fee->value;
-		}
+		if ($fee->setting == "fixed_fee_{$paymentMethod}")
+			$fixedFee = (float) $fee->value;
 
-		if ($fee->setting == "percentage_fee_{$paymentMethod}") {
-			$fee2 = (float) $fee->value;
-		}
+		if ($fee->setting == "percentage_fee_{$paymentMethod}")
+			$percentageFee = (float) $fee->value;
 
-		if ($fee->setting == "min_fee_{$paymentMethod}") {
+		if ($fee->setting == "min_fee_{$paymentMethod}")
 			$minFee = (float) $fee->value;
-		}
 
-		if ($fee->setting == "max_fee_{$paymentMethod}") {
+		if ($fee->setting == "max_fee_{$paymentMethod}")
 			$maxFee = (float) $fee->value;
-		}
 
-		if ($fee->setting == "enable_tax_{$paymentMethod}") {
-			$taxable = $fee->value;
-		}
-
+		if ($fee->setting == "enable_tax_{$paymentMethod}")
+			$taxable = (bool) ($fee->value == "on");
 	}
 
 	$total = $invoiceData['subtotal'];
+	$calcFee = round($fixedFee + $total * $percentageFee / 100, 2, PHP_ROUND_HALF_UP);
 
 	if ($total > 0) {
-		if ($maxFee != 0 && $maxFee < ($fee1 + $total * $fee2 / 100)) {
+		if ($maxFee != 0 && $maxFee < $calcFee) {
 			$d = Currency::defaultCurrency()->first()->prefix . number_format($maxFee, 2);
 			$amountDue = $maxFee;
-		} elseif ($minFee != 0 && $minFee > ($fee1 + $total * $fee2 / 100)) {
+		} elseif ($minFee != 0 && $minFee > $calcFee) {
 			$d = Currency::defaultCurrency()->first()->prefix . number_format($minFee, 2);
 			$amountDue = $minFee;
 		} else {
-			$amountDue = $fee1 + $total * $fee2 / 100;
+			$amountDue = $calcFee;
 
-			if ($fee1 > 0 & $fee2 > 0) {
-				$d = Currency::defaultCurrency()->first()->prefix . number_format($fee1, 2) . " + {$fee2}%";
-			} else if ($fee2 > 0) {
-				$d = "{$fee2}%";
-			} else if ($fee1 > 0) {
-				$d = number_format($fee1, 2);
+			if ($fixedFee > 0 & $percentageFee > 0) {
+				$d = Currency::defaultCurrency()->first()->prefix . number_format($fixedFee, 2) . " + {$percentageFee}%";
+			} else if ($percentageFee > 0) {
+				$d = "{$percentageFee}%";
+			} else if ($fixedFee > 0) {
+				$d = number_format($fixedFee, 2);
 			}
 		}
 
 	}
 
 	if ($d) {
-		InvoiceItem::insert([
+		$feeDescription = GatewaySetting::where(['gateway' => $paymentMethod, 'setting' => 'name'])->first()->value . " Fees ({$d})";
+
+		$id = InvoiceItem::insert([
 			'userid' => Session::get('uid'),
 			'invoiceid' => $invoiceId,
 			'type' => 'Fee',
 			'notes' => 'gateway_fees',
-			'description' => GatewaySetting::where(['gateway' => $paymentMethod, 'setting' => 'name'])->first()->value . " Fees ({$d})",
+			'description' => $feeDescription,
 			'amount' => $amountDue,
-			'taxed'	 => $taxable == 'on' ? '1' : '0',
+			'taxed'	 => $taxable ? '1' : '0',
 			'duedate' => date('Y-m-d H:i:s'),
 			'paymentmethod' => $paymentMethod,
 		]);
-
 	}
 
 	localAPI('UpdateInvoice', ['invoiceid' => $invoiceId]);
-
 }
 
 function gatewayFeesRecalculate($vars) {
@@ -107,8 +104,16 @@ function gatewayFeesRecalculate($vars) {
 	}
 }
 
-add_hook("InvoiceCreation", 1, "gatewayFees");
+function gatewayFeesSplit($vars) {
+	return gatewayFees(['invoiceid' => $vars['newinvoiceid']]);
+}
+
+add_hook("AddInvoiceLateFee", 1, "gatewayFees");
+add_hook("AfterInvoicingGenerateInvoiceItems", 1, "gatewayFees");
 add_hook("InvoiceChangeGateway", 1, "gatewayFees");
+add_hook("InvoiceCreated", 1, "gatewayFees");
+add_hook("InvoiceCreation", 1, "gatewayFees");
 add_hook("InvoiceCreationAdminArea", 1, "gatewayFees");
-add_hook("AdminInvoicesControlsOutput", 1, "gatewayFees");
+add_hook("InvoiceSplit", 1, "gatewayFeesSplit");
 add_hook("UpdateInvoiceTotal", PHP_INT_MAX, "gatewayFeesRecalculate");
+add_hook("InvoiceCreationAdminArea", 1, "gatewayFees");
